@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบันทึกรายรับ-รายจ่ายประจำวัน</title>
+    <title>ระบบบันทึกรายรับ-รายจ่าย พร้อมระบบสำรองข้อมูล</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f9;
+            background-color: #f0f4f8;
             margin: 0;
             padding: 20px;
             display: flex;
@@ -16,23 +16,25 @@
         .container {
             background-color: #ffffff;
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
             width: 100%;
             max-width: 500px;
         }
         h2 {
             text-align: center;
-            color: #333;
-            margin-bottom: 25px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            margin-top: 0;
         }
         .summary-box {
             display: flex;
             justify-content: space-between;
             margin-bottom: 25px;
-            background: #eef2f7;
+            background: #f8fafc;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
         }
         .summary-item {
             text-align: center;
@@ -40,79 +42,140 @@
         }
         .summary-item span {
             display: block;
-            font-size: 14px;
-            color: #666;
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 5px;
         }
         .summary-item strong {
             font-size: 18px;
         }
-        .income { color: #2ecc71; }
-        .expense { color: #e74c3c; }
-        .balance { color: #2c3e50; }
+        .income { color: #10b981; }
+        .expense { color: #ef4444; }
+        .balance { color: #0f172a; }
         
         .form-group {
             margin-bottom: 15px;
         }
         label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #334155;
+            font-size: 14px;
         }
         input, select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
             box-sizing: border-box;
             font-size: 14px;
+            transition: border 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
         }
         button {
             width: 100%;
             padding: 12px;
-            background-color: #3498db;
+            background-color: #3b82f6;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: background 0.2s;
         }
         button:hover {
-            background-color: #2980b9;
+            background-color: #2563eb;
         }
+        
+        /* โซนปุ่ม Backup / Import */
+        .backup-zone {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px dashed #cbd5e1;
+        }
+        .btn-backup {
+            flex: 1;
+            background-color: #059669;
+            font-size: 13px;
+            padding: 8px;
+        }
+        .btn-backup:hover {
+            background-color: #047857;
+        }
+        .btn-import {
+            flex: 1;
+            background-color: #475569;
+            font-size: 13px;
+            padding: 8px;
+            position: relative;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-import:hover {
+            background-color: #334155;
+        }
+        .btn-import input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
         .history {
-            margin-top: 30px;
+            margin-top: 25px;
         }
         .history h3 {
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
-            color: #444;
+            color: #1e293b;
+            font-size: 16px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
         }
         .list-group {
             list-style: none;
             padding: 0;
-            max-height: 250px;
+            margin: 0;
+            max-height: 220px;
             overflow-y: auto;
         }
         .list-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
+            padding: 10px 8px;
+            border-bottom: 1px solid #f1f5f9;
             font-size: 14px;
         }
-        .list-item.inc { border-left: 5px solid #2ecc71; }
-        .list-item.exp { border-left: 5px solid #e74c3c; }
+        .list-item.inc { border-left: 4px solid #10b981; }
+        .list-item.exp { border-left: 4px solid #ef4444; }
         .btn-delete {
-            background: #ff4d4d;
-            color: white;
+            background: #fee2e2;
+            color: #ef4444;
             border: none;
-            padding: 3px 8px;
-            border-radius: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 12px;
+            font-weight: 600;
+        }
+        .btn-delete:hover {
+            background: #fca5a5;
         }
     </style>
 </head>
@@ -121,7 +184,6 @@
 <div class="container">
     <h2>📝 บันทึกรายรับ-รายจ่าย</h2>
     
-    <!-- ส่วนแสดงยอดรวม -->
     <div class="summary-box">
         <div class="summary-item">
             <span>รายรับ</span>
@@ -137,11 +199,10 @@
         </div>
     </div>
 
-    <!-- ฟอร์มกรอกข้อมูล -->
     <form id="tracker-form">
         <div class="form-group">
             <label for="description">รายการ</label>
-            <input type="text" id="description" placeholder="เช่น ค่าข้าวเช้า, เงินเดือน" required>
+            <input type="text" id="description" placeholder="เช่น ค่าอาหาร, เงินเดือน" required>
         </div>
         <div class="form-group">
             <label for="amount">จำนวนเงิน (บาท)</label>
@@ -157,17 +218,22 @@
         <button type="submit">บันทึกรายการ</button>
     </form>
 
-    <!-- ส่วนแสดงประวัติ -->
     <div class="history">
-        <h3>ประวัติรายการวันนี้</h3>
+        <h3>ประวัติรายการ</h3>
         <ul id="transaction-list" class="list-group">
-            <!-- ข้อมูลจะถูกเพิ่มที่นี่ด้วย JavaScript -->
-        </ul>
+            </ul>
+    </div>
+
+    <div class="backup-zone">
+        <button type="button" class="btn-backup" onclick="exportBackup()">📥 สำรองข้อมูล (Backup)</button>
+        <div class="btn-import">
+            📤 นำเข้าข้อมูล (Import)
+            <input type="file" id="import-file" accept=".json" onchange="importBackup(event)">
+        </div>
     </div>
 </div>
 
 <script>
-    // ดึงองค์ประกอบต่างๆ จาก HTML
     const form = document.getElementById('tracker-form');
     const descriptionInput = document.getElementById('description');
     const amountInput = document.getElementById('amount');
@@ -178,93 +244,19 @@
     const totalExpenseText = document.getElementById('total-expense');
     const totalBalanceText = document.getElementById('total-balance');
 
-    // โหลดข้อมูลจากฐานข้อมูลเบราว์เซอร์ (LocalStorage) ถ้าไม่มีให้เป็นอาร์เรย์ว่าง
+    // ดึงข้อมูลจาก LocalStorage
     let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 
-    // ฟังก์ชันอัปเดตยอดรวมและแสดงรายการ
+    // ฟังก์ชันอัปเดตหน้าจอ
     function updateUI() {
         transactionList.innerHTML = '';
         let income = 0;
         let expense = 0;
 
+        if (transactions.length === 0) {
+            transactionList.innerHTML = '<li style="text-align:center; color:#94a3b8; padding: 20px 0; font-size:13px;">ยังไม่มีข้อมูลบันทึกในเครื่องนี้</li>';
+        }
+
         transactions.forEach((transaction, index) => {
             const item = document.createElement('li');
             const isIncome = transaction.type === 'income';
-            
-            //คำนวณยอด
-            if (isIncome) {
-                income += transaction.amount;
-            } else {
-                expense += transaction.amount;
-            }
-
-            // เพิ่มคลาสและโครงสร้างรายการ
-            item.classList.add('list-item', isIncome ? 'inc' : 'exp');
-            item.innerHTML = `
-                <div>
-                    <strong>${transaction.description}</strong> <br>
-                    <small style="color:#999;">${transaction.date}</small>
-                </div>
-                <div>
-                    <span class="${isIncome ? 'income' : 'expense'}">
-                        ${isIncome ? '+' : '-'}${transaction.amount.toFixed(2)} บ.
-                    </span>
-                    <button class="btn-delete" onclick="deleteTransaction(${index})">ลบ</button>
-                </div>
-            `;
-            transactionList.appendChild(item);
-        });
-
-        // อัปเดตตัวเลขการเงิน
-        const balance = income - expense;
-        totalIncomeText.innerText = `${income.toFixed(2)}`;
-        totalExpenseText.innerText = `${expense.toFixed(2)}`;
-        totalBalanceText.innerText = `${balance.toFixed(2)}`;
-        
-        // เปลี่ยนสีคำว่าคงเหลือถ้าติดลบ
-        totalBalanceText.style.color = balance >= 0 ? '#2c3e50' : '#e74c3c';
-    }
-
-    // ฟังก์ชันบันทึกข้อมูลลง LocalStorage
-    function updateLocalStorage() {
-        localStorage.setItem('transactions', JSON.stringify(transactions));
-    }
-
-    // ฟังก์ชันเพิ่มรายการใหม่
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const now = new Date();
-        const dateString = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
-
-        const transaction = {
-            description: descriptionInput.value,
-            amount: parseFloat(amountInput.value),
-            type: typeInput.value,
-            date: dateString
-        };
-
-        transactions.push(transaction);
-        updateLocalStorage();
-        updateUI();
-
-        // รีเซ็ตฟอร์ม
-        descriptionInput.value = '';
-        amountInput.value = '';
-    });
-
-    // ฟังก์ชันลบรายการ
-    function deleteTransaction(index) {
-        if(confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
-            transactions.splice(index, 1);
-            updateLocalStorage();
-            updateUI();
-        }
-    }
-
-    // รันระบบครั้งแรกเมื่อเปิดหน้าเว็บ
-    updateUI();
-</script>
-
-</body>
-</html>
