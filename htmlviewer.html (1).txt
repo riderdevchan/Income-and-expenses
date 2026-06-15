@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกรายรับ-รายจ่าย สมบูรณ์แบบ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+            margin-bottom: 60px; /* เว้นที่เผื่อแถบเมนูด้านล่าง */
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            margin-top: 0;
+            font-size: 22px;
+        }
+        
+        /* กล่องแสดงวันที่ปัจจุบัน */
+        .date-display {
+            text-align: center;
+            background: linear-gradient(135deg, #e0e7ff, #e0f2fe);
+            color: #1e3a8a;
+            padding: 8px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 15px;
+            border: 1px solid #bae6fd;
+        }
+
+        /* ปรับปรุงตารางสรุปผลเพื่อรองรับเงินหลักแสน/ล้าน ไม่ให้ตกหล่น */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            table-layout: fixed; /* บังคับแบ่งคอลัมน์เท่าๆ กัน */
+        }
+        .summary-table th, .summary-table td {
+            padding: 8px 4px; /* ลด Padding ซ้ายขวาเพื่อเพิ่มพื้นที่ตัวเลข */
+            text-align: center;
+            font-size: 12px; /* ขนาดฟอนต์เริ่มต้นบนจอมือถือ */
+            border: 1px solid #e2e8f0;
+            word-wrap: break-word; /* ถ้าเลขยาวมากให้ขึ้นบรรทัดใหม่แทนที่จะล้นทะลุช่อง */
+        }
+        .summary-table th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+        }
+        
+        /* ปรับขนาดตัวเลขเงินให้เหมาะกับขนาดจอเพื่อไม่ให้จัดรูปเพี้ยน */
+        .income { color: #10b981; font-weight: bold; }
+        .expense { color: #ef4444; font-weight: bold; }
+        .balance { color: #0f172a; font-weight: bold; }
+
+        @media (min-width: 400px) {
+            .summary-table th, .summary-table td {
+                font-size: 13.5px; /* เพิ่มขนาดเมื่อจอใหญ่ขึ้นหน่อย */
+                padding: 10px 6px;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #334155;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 5px;
+        }
+        .btn-submit:hover {
+            background-color: #2563eb;
+        }
+        
+        /* โซนปุ่ม บันทึก / ประวัติ (Bottom Navigation Tab) */
+        .tab-navigation {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background-color: #ffffff;
+            display: flex;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            border-top: 1px solid #e2e8f0;
+            z-index: 1000;
+        }
+        .tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 12px 0;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            color: #3b82f6;
+            border-top: 3px solid #3b82f6;
+            background-color: #f8fafc;
+        }
+
+        /* จัดการซ่อน/แสดงหน้า */
+        .app-page {
+            display: none;
+        }
+        .app-page.active {
+            display: block;
+        }
+
+        /* โซน Backup / Import */
+        .backup-zone {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px dashed #cbd5e1;
+        }
+        .btn-backup {
+            flex: 1; background-color: #059669; font-size: 12px; padding: 8px; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
+        }
+        .btn-backup:hover { background-color: #047857; }
+        .btn-import {
+            flex: 1; background-color: #475569; font-size: 12px; padding: 8px; position: relative; text-align: center; display: flex; align-items: center; justify-content: center; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;
+        }
+        .btn-import:hover { background-color: #334155; }
+        .btn-import input[type="file"] {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+        }
+
+        .history h3 {
+            color: #1e293b;
+            font-size: 16px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            margin-top: 0;
+        }
+        .list-group {
+            list-style: none;
+            padding: 0; margin: 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 8px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14px;
+        }
+        .list-item.inc { border-left: 4px solid #10b981; }
+        .list-item.exp { border-left: 4px solid #ef4444; }
+        .btn-delete {
+            background: #fee2e2; color: #ef4444; border: none;
+            padding: 4px 8px; border-radius: 6px;
+            cursor: pointer; font-size: 12px; font-weight: 600;
+        }
+        .btn-delete:hover { background: #fca5a5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📊 รายรับ-รายจ่าย (จ.-อา.)</h2>
+    
+    <div class="date-display" id="current-date-box">
+        วันที่ปัจจุบัน: โหลดข้อมูล...
+    </div>
+    
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th style="width: 28%;">ช่วงเวลา</th>
+                <th>รายรับ (+)</th>
+                <th>รายจ่าย (-)</th>
+                <th style="width: 28%;">คงเหลือ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>วันนี้</strong></td>
+                <td class="income" id="day-income">0.00</td>
+                <td class="expense" id="day-expense">0.00</td>
+                <td class="balance" id="day-balance">0.00</td>
+            </tr>
+            <tr>
+                <td><strong>สัปดาห์นี้</strong></td>
+                <td class="income" id="week-income">0.00</td>
+                <td class="expense" id="week-expense">0.00</td>
+                <td class="balance" id="week-balance">0.00</td>
+            </tr>
+            <tr>
+                <td><strong>เดือนนี้</strong></td>
+                <td class="income" id="month-income">0.00</td>
+                <td class="expense" id="month-expense">0.00</td>
+                <td class="balance" id="month-balance">0.00</td>
+            </tr>
+            <tr>
+                <td><strong>ทั้งหมด</strong></td>
+                <td class="income" id="total-income">0.00</td>
+                <td class="expense" id="total-expense">0.00</td>
+                <td class="balance" id="total-balance">0.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div id="page-form" class="app-page active">
+        <form id="tracker-form">
+            <div class="form-group">
+                <label for="description">รายการ</label>
+                <input type="text" id="description" placeholder="เช่น ค่าอาหาร, เงินเดือน" required>
+            </div>
+            <div class="form-group">
+                <label for="amount">จำนวนเงิน (บาท)</label>
+                <input type="number" id="amount" step="0.01" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+                <label for="type">ประเภท</label>
+                <select id="type">
+                    <option value="income">รายรับ (+)</option>
+                    <option value="expense">รายจ่าย (-)</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-submit">บันทึกรายการ</button>
+        </form>
+
+        <div class="backup-zone">
+            <button type="button" class="btn-backup" onclick="exportBackup()">📥 สำรองข้อมูล (Backup)</button>
+            <div class="btn-import">
+                📤 นำเข้าข้อมูล (Import)
+                <input type="file" id="import-file" accept=".json" onchange="importBackup(event)">
+            </div>
+        </div>
+    </div>
+
+    <div id="page-history" class="app-page">
+        <div class="history">
+            <h3>📜 ประวัติรายการทั้งหมด</h3>
+            <ul id="transaction-list" class="list-group">
+                </ul>
+        </div>
+    </div>
+</div>
+
+<div class="tab-navigation">
+    <button class="tab-btn active" id="tab-form-btn" onclick="switchPage('form')">📝 บันทึกรายการ</button>
+    <button class="tab-btn" id="tab-history-btn" onclick="switchPage('history')">📜 ประวัติรายการ</button>
+</div>
+
+<script>
+    const form = document.getElementById('tracker-form');
+    const descriptionInput = document.getElementById('description');
+    const amountInput = document.getElementById('amount');
+    const typeInput = document.getElementById('type');
+    const transactionList = document.getElementById('transaction-list');
+    
+    // อ้างอิงตารางสรุปผล
+    const dayIncomeText = document.getElementById('day-income');
+    const dayExpenseText = document.getElementById('day-expense');
+    const dayBalanceText = document.getElementById('day-balance');
+    const weekIncomeText = document.getElementById('week-income');
+    const weekExpenseText = document.getElementById('week-expense');
+    const weekBalanceText = document.getElementById('week-balance');
+    const monthIncomeText = document.getElementById('month-income');
+    const monthExpenseText = document.getElementById('month-expense');
+    const monthBalanceText = document.getElementById('month-balance');
+    const totalIncomeText = document.getElementById('total-income');
+    const totalExpenseText = document.getElementById('total-expense');
+    const totalBalanceText = document.getElementById('total-balance');
+
+    let transactions = JSON.parse(localStorage.getItem('transactions_v2')) || [];
+
+    // แสดงวันที่ปัจจุบันในระบบไทย (พ.ศ.)
+    function showCurrentDate() {
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date-box').innerText = `📅 วันนี้: ${today.toLocaleDateString('th-TH', options)}`;
+    }
+
+    // ฟังก์ชันสลับหน้าแอป (Tabs)
+    function switchPage(pageName) {
+        document.querySelectorAll('.app-page').forEach(page => page.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+        if (pageName === 'form') {
+            document.getElementById('page-form').classList.add('active');
+            document.getElementById('tab-form-btn').classList.add('active');
+        } else if (pageName === 'history') {
+            document.getElementById('page-history').classList.add('active');
+            document.getElementById('tab-history-btn').classList.add('active');
+        }
+    }
+
+    function formatNum(num) {
+        return num.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    function getMondayAndSundayOfCurrentWeek() {
+        const now = new Date();
+        const currentDay = now.getDay(); 
+        const monday = new Date(now);
+        const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay; 
+        monday.setDate(now.getDate() + distanceToMonday);
+        monday.setHours(0, 0, 0, 0);
+
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        sunday.setHours(23, 59, 59, 999);
+
+        return { start: monday.getTime(), end: sunday.getTime() };
+    }
+
+    function updateUI() {
+        transactionList.innerHTML = '';
+        
+        let totals = {
+            day: { inc: 0, exp: 0 },
+            week: { inc: 0, exp: 0 },
+            month: { inc: 0, exp: 0 },
+            all: { inc: 0, exp: 0 }
+        };
+
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const currentWeekRange = getMondayAndSundayOfCurrentWeek();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        if (transactions.length === 0) {
+            transactionList.innerHTML = '<li style="text-align:center; color:#94a3b8; padding: 35px 0; font-size:14px;">ยังไม่มีข้อมูลประวัติบันทึก</li>';
+        }
+
+        const displayList = [...transactions].reverse();
+
+        transactions.forEach((transaction) => {
+            const tDate = new Date(transaction.timestamp);
+            const tTime = tDate.getTime();
+            const isInc = transaction.type === 'income';
+            const amt = transaction.amount;
+
+            if (isInc) totals.all.inc += amt; else totals.all.exp += amt;
+
+            if (tTime >= startOfToday) {
+                if (isInc) totals.day.inc += amt; else totals.day.exp += amt;
+            }
+
+            if (tTime >= currentWeekRange.start && tTime <= currentWeekRange.end) {
+                if (isInc) totals.week.inc += amt; else totals.week.exp += amt;
+            }
+
+            if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
+                if (isInc) totals.month.inc += amt; else totals.month.exp += amt;
+            }
+        });
+
+        displayList.forEach((transaction) => {
+            const actualIndex = transactions.findIndex(t => t.timestamp === transaction.timestamp);
+            const isInc = transaction.type === 'income';
+
+            const item = document.createElement('li');
+            item.classList.add('list-item', isInc ? 'inc' : 'exp');
+            item.innerHTML = `
+                <div>
+                    <strong>${transaction.description}</strong> <br>
+                    <small style="color:#94a3b8; font-size:11px;">${transaction.dateText}</small>
+                </div>
+                <div style="text-align: right;">
+                    <span class="${isInc ? 'income' : 'expense'}" style="margin-right:8px; font-weight:600;">
+                        ${isInc ? '+' : '-'}${formatNum(transaction.amount)}
+                    </span>
+                    <button class="btn-delete" onclick="deleteTransaction(${actualIndex})">ลบ</button>
+                </div>
+            `;
+            transactionList.appendChild(item);
+        });
+
+        // แสดงผลตัวเลขเงินเข้าตาราง
+        dayIncomeText.innerText = formatNum(totals.day.inc);
+        dayExpenseText.innerText = formatNum(totals.day.exp);
+        const dayBal = totals.day.inc - totals.day.exp;
+        dayBalanceText.innerText = formatNum(dayBal);
+        dayBalanceText.style.color = dayBal >= 0 ? '#0f172a' : '#ef4444';
+
+        weekIncomeText.innerText = formatNum(totals.week.inc);
+        weekExpenseText.innerText = formatNum(totals.week.exp);
+        const weekBal = totals.week.inc - totals.week.exp;
+        weekBalanceText.innerText = formatNum(weekBal);
+        weekBalanceText.style.color = weekBal >= 0 ? '#0f172a' : '#ef4444';
+
+        monthIncomeText.innerText = formatNum(totals.month.inc);
+        monthExpenseText.innerText = formatNum(totals.month.exp);
+        const monthBal = totals.month.inc - totals.month.exp;
+        monthBalanceText.innerText = formatNum(monthBal);
+        monthBalanceText.style.color = monthBal >= 0 ? '#0f172a' : '#ef4444';
+
+        totalIncomeText.innerText = formatNum(totals.all.inc);
+        totalExpenseText.innerText = formatNum(totals.all.exp);
+        const allBal = totals.all.inc - totals.all.exp;
+        totalBalanceText.innerText = formatNum(allBal);
+        totalBalanceText.style.color = allBal >= 0 ? '#0f172a' : '#ef4444';
+    }
+
+    function updateLocalStorage() {
+        localStorage.setItem('transactions_v2', JSON.stringify(transactions));
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const now = new Date();
+        const dateString = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+
+        const transaction = {
+            description: descriptionInput.value,
+            amount: parseFloat(amountInput.value),
+            type: typeInput.value,
+            dateText: dateString,
+            timestamp: now.getTime()
+        };
+
+        transactions.push(transaction);
+        updateLocalStorage();
+        updateUI();
+
+        descriptionInput.value = '';
+        amountInput.value = '';
+        
+        alert('บันทึกข้อมูลเรียบร้อย!');
+    });
+
+    function deleteTransaction(index) {
+        if(index > -1 && confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
+            transactions.splice(index, 1);
+            updateLocalStorage();
+            updateUI();
+        }
+    }
+
+    function exportBackup() {
+        if (transactions.length === 0) {
+            alert('ไม่มีข้อมูลให้สำรองในขณะนี้');
+            return;
+        }
+        const dataStr = JSON.stringify(transactions, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const today = new Date();
+        const filename = `wallet_report_${today.getDate()}_${today.getMonth()+1}_${today.getFullYear()}.json`;
+        
+        const link = document.createElement('a');
+        link.setAttribute('href', dataUri);
+        link.setAttribute('download', filename);
+        link.click();
+    }
+
+    function importBackup(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (Array.isArray(importedData)) {
+                    if (confirm('การนำเข้าข้อมูลจะเขียนทับข้อมูลทั้งหมดในเครื่องนี้ ต้องการทำต่อหรือไม่?')) {
+                        transactions = importedData;
+                        updateLocalStorage();
+                        updateUI();
+                        alert('นำเข้าข้อมูลเรียบร้อยแล้ว!');
+                    }
+                } else { alert('โครงสร้างไฟล์ไม่ถูกต้อง'); }
+            } catch (err) { alert('ไม่สามารถอ่านไฟล์นี้ได้'); }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    // รันฟังก์ชันแรกเริ่ม
+    showCurrentDate();
+    updateUI();
+</script>
+
+</body>
+</html>
