@@ -31,29 +31,9 @@
             width: 100%;
             max-width: 500px;
             box-sizing: border-box;
-            margin-bottom: 60px;
+            margin-bottom: 75px; /* เว้นระยะด้านล่างเผื่อสำหรับปุ่มติดตั้งและแถบเมนู */
         }
         
-        /* แถบแจ้งเตือนปุ่มติดตั้งแอปแบบไม่ต้องกด 3 จุด */
-        .install-bar {
-            display: none;
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white;
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            animation: bounce 2s infinite;
-        }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
-        }
-
         h2 {
             text-align: center;
             color: #2c3e50;
@@ -196,6 +176,35 @@
             font-weight: 600;
         }
 
+        /* โซนจัดการปุ่มติดตั้ง/ถอนติดตั้งแอปที่ด้านล่างสุด */
+        .bottom-action-zone {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed #cbd5e1;
+        }
+        .btn-pwa-action {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        /* สไตล์สถานะที่ 1: ยังไม่ได้ติดตั้ง (ปุ่มสีฟ้าเด่น) */
+        .btn-pwa-install {
+            background-color: #2563eb;
+        }
+        .btn-pwa-install:hover { background-color: #1d4ed8; }
+        /* สไตล์สถานะที่ 2: ติดตั้งแล้ว (ปุ่มสีเทาสำหรับถอนการติดตั้ง) */
+        .btn-pwa-uninstall {
+            background-color: #64748b;
+        }
+        .btn-pwa-uninstall:hover { background-color: #475569; }
+
         .tab-navigation {
             position: fixed;
             bottom: 0; left: 0; right: 0;
@@ -251,7 +260,7 @@
         @media print {
             body { background-color: #ffffff; padding: 0; margin: 0; display: block; }
             .container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; margin: 0; }
-            .tab-navigation, #page-form, .edit-warning, .file-zone, .action-btns, .date-display, .install-bar { display: none !important; }
+            .tab-navigation, #page-form, .edit-warning, .file-zone, .action-btns, .date-display, .bottom-action-zone { display: none !important; }
             #page-history { display: block !important; }
             .summary-table { margin-top: 20px; table-layout: auto; }
             .summary-table th, .summary-table td { font-size: 14px; padding: 8px; }
@@ -274,10 +283,6 @@
 </div>
 
 <div class="container">
-    <div id="install-banner" class="install-bar" onclick="triggerInstall()">
-        📲 กดตรงนี้เพื่อติดตั้งแอป "Money" ลงเครื่องทันที!
-    </div>
-
     <h2>📊 Money - รายรับรายจ่าย</h2>
     
     <div class="date-display" id="current-date-box">วันที่ปัจจุบัน: โหลดข้อมูล...</div>
@@ -358,6 +363,12 @@
                 <input type="file" id="import-file" accept=".json" onchange="importBackup(event)">
             </div>
         </div>
+        
+        <div class="bottom-action-zone">
+            <button id="pwa-action-btn" class="btn-pwa-action btn-pwa-install" onclick="handlePwaAction()">
+                📥 ติดตั้งแอป "Money" ลงเครื่อง
+            </button>
+        </div>
     </div>
 
     <div id="page-history" class="app-page">
@@ -375,38 +386,67 @@
 
 <script>
     let deferredPrompt;
-    const installBanner = document.getElementById('install-banner');
+    const pwaActionBtn = document.getElementById('pwa-action-btn');
 
-    // ดักจับ Event ระบบเพื่อสร้างปุ่มกดติดตั้งโดยตรงบนหน้าเว็บ
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        // โชว์ปุ่มแถบสีฟ้าด้านบนสุดเมื่อระบบพร้อมให้ติดตั้ง
-        installBanner.style.display = 'block';
-    });
-
-    // ฟังก์ชันเมื่อผู้ใช้คลิกปุ่มติดตั้งบนหน้าเว็บ
-    function triggerInstall() {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-                if (choiceResult.outcome === 'accepted') {
-                    console.log('User accepted the install prompt');
-                    installBanner.style.display = 'none'; // ซ่อนปุ่มเมื่อยอมรับการติดตั้งแล้ว
-                }
-                deferredPrompt = null;
-            });
+    // เช็กสถานะเบื้องต้นว่าเว็บรันในโหมดแอป (Standalone) หรือเปิดปกติในเบราว์เซอร์
+    function checkAppMode() {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        if (isStandalone) {
+            // ถ้าอยู่ในโหมดแอปแล้ว ให้เปลี่ยนปุ่มเป็น "ถอนการติดตั้ง"
+            setButtonToUninstall();
+        } else {
+            // ถ้าเปิดในบราวเซอร์ปกติ ให้ปุ่มซ่อนตัวไว้ก่อนจนกว่าเบราว์เซอร์จะส่งสัญญาณว่าพร้อมติดตั้ง
+            pwaActionBtn.style.display = 'none';
         }
     }
 
-    // ซ่อนปุ่มอัตโนมัติหากผู้ใช้ติดตั้งเสร็จแล้วเปิดผ่านตัวแอปโดยตรง
+    // ฟังก์ชันเปลี่ยนปุ่มเป็นสถานะ "ถอนการติดตั้ง"
+    function setButtonToUninstall() {
+        pwaActionBtn.style.display = 'block';
+        pwaActionBtn.innerText = '❌ ถอนการติดตั้งแอป (Uninstall)';
+        pwaActionBtn.className = 'btn-pwa-action btn-pwa-uninstall';
+    }
+
+    // ระบบดักสัญญาณความพร้อมในการติดตั้งแอปจาก Android / Chrome
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // โชว์ปุ่มสถานะ "ติดตั้งแอป" ทันที
+        pwaActionBtn.style.display = 'block';
+        pwaActionBtn.innerText = '📥 ติดตั้งแอป "Money" ลงเครื่อง';
+        pwaActionBtn.className = 'btn-pwa-action btn-pwa-install';
+    });
+
+    // ศูนย์จัดการคลิกปุ่มด้านล่างสุด (สลับฟังก์ชันตามสถานะแอป)
+    function handlePwaAction() {
+        if (pwaActionBtn.classList.contains('btn-pwa-install')) {
+            // --- กรณีที่ 1: สถานะยังไม่ได้ติดตั้ง ทำการกระตุ้นป็อปอัปติดตั้ง ---
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        setButtonToUninstall();
+                    }
+                    deferredPrompt = null;
+                });
+            } else {
+                alert('สำหรับ iOS (iPhone): กรุณากดปุ่ม "แชร์" บน Safari แล้วเลือก "เพิ่มไปยังหน้าจอโฮม" ครับ');
+            }
+        } else {
+            // --- กรณีที่ 2: สถานะติดตั้งเรียบร้อยแล้ว แนะนำวิธีลบแอปออก ---
+            alert('⚙️ วิธีการถอนการติดตั้งแอป:\n\n- บนแอนดรอยด์: กดค้างที่ไอคอนแอป "Money" บนหน้าจอหลัก แล้วเลือก "ถอนการติดตั้ง" หรือ "นำออก"\n- บน iPhone: กดค้างที่ไอคอนแอปแล้วเลือก "ลบที่คั่นหน้า" ครับ');
+        }
+    }
+
+    // ดักจับจังหวะหลังจากผู้ใช้กดติดตั้งแอปเสร็จสิ้นสำเร็จ
     window.addEventListener('appinstalled', () => {
-        installBanner.style.display = 'none';
-        alert('ติดตั้งแอป Money เรียบร้อยแล้วบนหน้าจอโฮมของคุณ!');
+        deferredPrompt = null;
+        setButtonToUninstall();
+        alert('🎉 ติดตั้งแอป Money เรียบร้อยแล้ว! สามารถเปิดใช้งานโดยตรงจากหน้าจอโฮมได้เลยครับ');
     });
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(() => console.log('PWA Ready'));
+        navigator.serviceWorker.register('sw.js').then(() => console.log('Service Worker Active'));
     }
 
     const form = document.getElementById('tracker-form');
@@ -650,6 +690,8 @@
         reader.readAsText(file);
     }
 
+    // รันกระบวนการตรวจเช็คสถานะแอปพลิเคชัน
+    checkAppMode();
     showCurrentDate();
     updateUI();
 </script>
