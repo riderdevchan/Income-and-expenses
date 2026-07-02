@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบันทึกรายรับ-รายจ่าย (เวอร์ชันแก้ไขได้ + ส่งออก Excel)</title>
-    <!-- โหลดไลบรารี SheetJS สำหรับใช้แปลงข้อมูลเป็นไฟล์ .xlsx แท้ๆ บนเบราว์เซอร์ -->
+    <title>ระบบบันทึกรายรับ-รายจ่าย สมบูรณ์แบบ v5.0</title>
+    <!-- โหลดไลบรารี SheetJS สำหรับใช้แปลงข้อมูลเป็นไฟล์ .xlsx -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body {
@@ -77,16 +77,16 @@
         }
 
         .form-group {
-            margin-bottom: 12px;
+            margin-bottom: 15px;
         }
         label {
             display: block;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             font-weight: 600;
             color: #334155;
             font-size: 14px;
         }
-        input, select {
+        input {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #cbd5e1;
@@ -94,10 +94,54 @@
             box-sizing: border-box;
             font-size: 14px;
         }
-        input:focus, select:focus {
+        input:focus {
             outline: none;
             border-color: #3b82f6;
         }
+
+        /* ปรับปรุงดีไซน์ตัวเลือกประเภทแบบปุ่มกดด้านนอกแทน Dropdownเดิม */
+        .type-selector-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .type-option {
+            flex: 1;
+            position: relative;
+        }
+        .type-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .type-label {
+            display: block;
+            text-align: center;
+            padding: 12px;
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        /* เมื่อวิทยุประเภทรายรับถูกเลือก */
+        #type-income:checked + .type-label {
+            background-color: #e6fbf1;
+            color: #065f46;
+            border-color: #10b981;
+        }
+        /* เมื่อวิทยุประเภทรายจ่ายถูกเลือก */
+        #type-expense:checked + .type-label {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border-color: #ef4444;
+        }
+
         .btn-submit {
             width: 100%;
             padding: 12px;
@@ -113,7 +157,6 @@
         }
         .btn-submit:hover { background-color: #2563eb; }
         
-        /* สไตล์สำหรับการแจ้งเตือนเมื่ออยู่ในโหมดแก้ไข */
         .edit-warning {
             display: none;
             background-color: #fef3c7;
@@ -145,7 +188,7 @@
         .app-page { display: none; }
         .app-page.active { display: block; }
 
-        /* โซนจัดการไฟล์ */
+        /* โซนปุ่มส่งออกและการจัดการไฟล์ */
         .file-zone {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -157,20 +200,18 @@
         .btn-file {
             padding: 10px; font-size: 12px; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center;
         }
+        .btn-excel { background-color: #16a34a; }
+        .btn-excel:hover { background-color: #15803d; }
+        
+        .btn-pdf { background-color: #dc2626; }
+        .btn-pdf:hover { background-color: #b91c1c; }
+
         .btn-backup { background-color: #059669; }
         .btn-backup:hover { background-color: #047857; }
         .btn-import { background-color: #475569; position: relative; }
         .btn-import:hover { background-color: #334155; }
         .btn-import input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         
-        .btn-excel {
-            grid-column: span 2; /* ปุ่มยาวเต็มแถว */
-            background-color: #16a34a;
-            font-size: 14px;
-            padding: 12px;
-        }
-        .btn-excel:hover { background-color: #15803d; }
-
         .history h3 { color: #1e293b; font-size: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px; margin-top: 0; }
         .list-group { list-style: none; padding: 0; margin: 0; max-height: 420px; overflow-y: auto; }
         .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
@@ -183,9 +224,35 @@
         .btn-edit:hover { background: #bfdbfe; }
         .btn-delete { background: #fee2e2; color: #ef4444; }
         .btn-delete:hover { background: #fca5a5; }
+
+        /* =================================================== */
+        /* CSS โหมดจัดหน้าพิมพ์เพื่อส่งออก PDF (ซ่อนปุ่มและหน้าส่วนเกินตอนพิมพ์) */
+        /* =================================================== */
+        @media print {
+            body { background-color: #ffffff; padding: 0; margin: 0; display: block; }
+            .container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; margin: 0; }
+            .tab-navigation, #page-form, .edit-warning, .file-zone, .action-btns, .date-display { display: none !important; }
+            #page-history { display: block !important; }
+            .summary-table { margin-top: 20px; table-layout: auto; }
+            .summary-table th, .summary-table td { font-size: 14px; padding: 8px; }
+            .list-group { max-height: none; overflow: visible; }
+            .list-item { page-break-inside: avoid; border-bottom: 1px solid #666; padding: 12px 0; }
+            .list-item.inc { border-left: 5px solid #10b981; }
+            .list-item.exp { border-left: 5px solid #ef4444; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; }
+            .print-header h1 { margin: 0 0 5px 0; font-size: 24px; color: #1e293b; }
+            .print-header p { margin: 0; color: #64748b; font-size: 14px; }
+        }
+        .print-header { display: none; }
     </style>
 </head>
 <body>
+
+<!-- ส่วนหัวเอกสารที่จะปรากฏเฉพาะเวลาพิมพ์หรือส่งออกเป็น PDF เท่านั้น -->
+<div class="print-header" id="pdf-header">
+    <h1>รายงานสรุปบัญชีรายรับ-รายจ่าย</h1>
+    <p id="pdf-print-date">พิมพ์เมื่อ: </p>
+</div>
 
 <div class="container">
     <h2>📊 รายรับ-รายจ่าย (จ.-อา.)</h2>
@@ -232,7 +299,6 @@
 
     <!-- ================= หน้าที่ 1: หน้าบันทึกข้อมูล ================= -->
     <div id="page-form" class="app-page active">
-        <!-- กล่องเตือนสถานะเมื่อกดแก้ไข -->
         <div class="edit-warning" id="edit-status-box">⚠️ คุณกำลังอยู่ในโหมดแก้ไขรายการ!</div>
 
         <form id="tracker-form">
@@ -244,19 +310,29 @@
                 <label for="amount">จำนวนเงิน (บาท)</label>
                 <input type="number" id="amount" step="0.01" placeholder="0.00" required>
             </div>
+            
+            <!-- เปลี่ยนเป็นแบบตัวเลือกปุ่มกดด้านนอก (Radio style) -->
             <div class="form-group">
-                <label for="type">ประเภท</label>
-                <select id="type">
-                    <option value="income">รายรับ (+)</option>
-                    <option value="expense">รายจ่าย (-)</option>
-                </select>
+                <label>ประเภทรายการ</label>
+                <div class="type-selector-group">
+                    <div class="type-option">
+                        <input type="radio" name="transaction-type" id="type-income" value="income" checked>
+                        <label for="type-income" class="type-label">รายรับ (+)</label>
+                    </div>
+                    <div class="type-option">
+                        <input type="radio" name="transaction-type" id="type-expense" value="expense">
+                        <label for="type-expense" class="type-label">รายจ่าย (-)</label>
+                    </div>
+                </div>
             </div>
+            
             <button type="submit" class="btn-submit" id="submit-btn">บันทึกรายการ</button>
         </form>
 
-        <!-- โซนปุ่มไฟล์ Backup / Import / Excel -->
+        <!-- โซนปุ่มส่งออกและการจัดการไฟล์ทั้งหมด -->
         <div class="file-zone">
             <button type="button" class="btn-file btn-excel" onclick="exportToExcel()">🟢 ส่งออกไฟล์ Excel (.xlsx)</button>
+            <button type="button" class="btn-file btn-pdf" onclick="exportToPDF()">🔴 ส่งออกเป็นไฟล์ PDF</button>
             <button type="button" class="btn-file btn-backup" onclick="exportBackup()">📥 สำรองข้อมูลระบบ (JSON)</button>
             <div class="btn-file btn-import">
                 📤 นำเข้าข้อมูลระบบ (JSON)
@@ -285,7 +361,6 @@
     const form = document.getElementById('tracker-form');
     const descriptionInput = document.getElementById('description');
     const amountInput = document.getElementById('amount');
-    const typeInput = document.getElementById('type');
     const transactionList = document.getElementById('transaction-list');
     const submitBtn = document.getElementById('submit-btn');
     const editStatusBox = document.getElementById('edit-status-box');
@@ -305,8 +380,6 @@
     const totalBalanceText = document.getElementById('total-balance');
 
     let transactions = JSON.parse(localStorage.getItem('transactions_v2')) || [];
-    
-    // ตัวแปรเก็บสถานะการแก้ไข (-1 แปลว่าไม่ได้แก้ใครอยู่, ถ้ามีตัวเลขแปลว่ากำลังแก้ index นั้นอยู่)
     let editTargetIndex = -1;
 
     function showCurrentDate() {
@@ -350,12 +423,7 @@
     function updateUI() {
         transactionList.innerHTML = '';
         
-        let totals = {
-            day: { inc: 0, exp: 0 },
-            week: { inc: 0, exp: 0 },
-            month: { inc: 0, exp: 0 },
-            all: { inc: 0, exp: 0 }
-        };
+        let totals = { day: { inc: 0, exp: 0 }, week: { inc: 0, exp: 0 }, month: { inc: 0, exp: 0 }, all: { inc: 0, exp: 0 } };
 
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -367,7 +435,6 @@
             transactionList.innerHTML = '<li style="text-align:center; color:#94a3b8; padding: 35px 0; font-size:14px;">ยังไม่มีข้อมูลประวัติบันทึก</li>';
         }
 
-        // คัดลอกอาเรย์แล้วกลับด้านเพื่อแสดงผลจากใหม่ไปเก่า
         const displayList = [...transactions].reverse();
 
         transactions.forEach((transaction) => {
@@ -377,22 +444,12 @@
             const amt = transaction.amount;
 
             if (isInc) totals.all.inc += amt; else totals.all.exp += amt;
-
-            if (tTime >= startOfToday) {
-                if (isInc) totals.day.inc += amt; else totals.day.exp += amt;
-            }
-
-            if (tTime >= currentWeekRange.start && tTime <= currentWeekRange.end) {
-                if (isInc) totals.week.inc += amt; else totals.week.exp += amt;
-            }
-
-            if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-                if (isInc) totals.month.inc += amt; else totals.month.exp += amt;
-            }
+            if (tTime >= startOfToday) { if (isInc) totals.day.inc += amt; else totals.day.exp += amt; }
+            if (tTime >= currentWeekRange.start && tTime <= currentWeekRange.end) { if (isInc) totals.week.inc += amt; else totals.week.exp += amt; }
+            if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) { if (isInc) totals.month.inc += amt; else totals.month.exp += amt; }
         });
 
         displayList.forEach((transaction) => {
-            // ค้นหา ID จริงในอาเรย์หลัก
             const actualIndex = transactions.findIndex(t => t.timestamp === transaction.timestamp);
             const isInc = transaction.type === 'income';
 
@@ -417,79 +474,69 @@
         });
 
         // ดันเลขเข้าตาราง
-        dayIncomeText.innerText = formatNum(totals.day.inc);
-        dayExpenseText.innerText = formatNum(totals.day.exp);
-        const dayBal = totals.day.inc - totals.day.exp;
-        dayBalanceText.innerText = formatNum(dayBal);
-        dayBalanceText.style.color = dayBal >= 0 ? '#0f172a' : '#ef4444';
+        dayIncomeText.innerText = formatNum(totals.day.inc); dayExpenseText.innerText = formatNum(totals.day.exp);
+        const dayBal = totals.day.inc - totals.day.exp; dayBalanceText.innerText = formatNum(dayBal); dayBalanceText.style.color = dayBal >= 0 ? '#0f172a' : '#ef4444';
 
-        weekIncomeText.innerText = formatNum(totals.week.inc);
-        weekExpenseText.innerText = formatNum(totals.week.exp);
-        const weekBal = totals.week.inc - totals.week.exp;
-        weekBalanceText.innerText = formatNum(weekBal);
-        weekBalanceText.style.color = weekBal >= 0 ? '#0f172a' : '#ef4444';
+        weekIncomeText.innerText = formatNum(totals.week.inc); weekExpenseText.innerText = formatNum(totals.week.exp);
+        const weekBal = totals.week.inc - totals.week.exp; weekBalanceText.innerText = formatNum(weekBal); weekBalanceText.style.color = weekBal >= 0 ? '#0f172a' : '#ef4444';
 
-        monthIncomeText.innerText = formatNum(totals.month.inc);
-        monthExpenseText.innerText = formatNum(totals.month.exp);
-        const monthBal = totals.month.inc - totals.month.exp;
-        monthBalanceText.innerText = formatNum(monthBal);
-        monthBalanceText.style.color = monthBal >= 0 ? '#0f172a' : '#ef4444';
+        monthIncomeText.innerText = formatNum(totals.month.inc); monthExpenseText.innerText = formatNum(totals.month.exp);
+        const monthBal = totals.month.inc - totals.month.exp; monthBalanceText.innerText = formatNum(monthBal); monthBalanceText.style.color = monthBal >= 0 ? '#0f172a' : '#ef4444';
 
-        totalIncomeText.innerText = formatNum(totals.all.inc);
-        totalExpenseText.innerText = formatNum(totals.all.exp);
-        const allBal = totals.all.inc - totals.all.exp;
-        totalBalanceText.innerText = formatNum(allBal);
-        totalBalanceText.style.color = allBal >= 0 ? '#0f172a' : '#ef4444';
+        totalIncomeText.innerText = formatNum(totals.all.inc); totalExpenseText.innerText = formatNum(totals.all.exp);
+        const allBal = totals.all.inc - totals.all.exp; totalBalanceText.innerText = formatNum(allBal); totalBalanceText.style.color = allBal >= 0 ? '#0f172a' : '#ef4444';
     }
 
     function updateLocalStorage() {
         localStorage.setItem('transactions_v2', JSON.stringify(transactions));
     }
 
-    // ฟังก์ชันเริ่มกระบวนการแก้ไขข้อมูล
     function startEditTransaction(index) {
         const target = transactions[index];
         if(!target) return;
 
-        // นำค่าไปใส่กลับในฟอร์มช่องกรอก
         descriptionInput.value = target.description;
         amountInput.value = target.amount;
-        typeInput.value = target.type;
+        
+        // เลือกวิทยุประเภทให้ตรงข้อมูลเดิม
+        if (target.type === 'income') {
+            document.getElementById('type-income').checked = true;
+        } else {
+            document.getElementById('type-expense').checked = true;
+        }
 
-        // ปรับเปลี่ยนโหมด UI เป็นการ "แก้ไข"
         editTargetIndex = index;
         submitBtn.innerText = "🔄 อัปเดตรายการที่แก้ไข";
-        submitBtn.style.backgroundColor = "#eab308"; // เปลี่ยนปุ่มเป็นสีส้มเพื่อให้รู้ว่ากำลังแก้
+        submitBtn.style.backgroundColor = "#eab308";
         editStatusBox.style.display = "block";
 
-        // เด้งหน้าจอกลับมาหน้าบันทึกโดยอัตโนมัติเพื่อให้ผู้ใช้แก้ไขได้ทันที
         switchPage('form');
     }
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        // ดึงค่าประเภทจากวิทยุที่เลือกอยู่ข้างนอก
+        const selectedType = document.querySelector('input[name="transaction-type"]:checked').value;
 
         if (editTargetIndex > -1) {
-            // --- กรณีที่ 1: อยู่ในโหมดแก้ไขข้อมูลเดิม ---
             transactions[editTargetIndex].description = descriptionInput.value;
             transactions[editTargetIndex].amount = parseFloat(amountInput.value);
-            transactions[editTargetIndex].type = typeInput.value;
+            transactions[editTargetIndex].type = selectedType;
             
-            // ล้างสถานะโหมดแก้ไขกลับสู่โหมดปกติ
             editTargetIndex = -1;
             submitBtn.innerText = "บันทึกรายการ";
             submitBtn.style.backgroundColor = "#3b82f6";
             editStatusBox.style.display = "none";
             alert('อัปเดตข้อมูลการแก้ไขแล้ว!');
         } else {
-            // --- กรณีที่ 2: เป็นการเพิ่มรายการใหม่ปกติ ---
             const now = new Date();
             const dateString = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
 
             const transaction = {
                 description: descriptionInput.value,
                 amount: parseFloat(amountInput.value),
-                type: typeInput.value,
+                type: selectedType,
                 dateText: dateString,
                 timestamp: now.getTime()
             };
@@ -506,62 +553,56 @@
 
     function deleteTransaction(index) {
         if(index > -1 && confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
-            // หากรายการที่กำลังลบ ดันเป็นรายการที่กดแก้ไขค้างไว้ ให้รีเซ็ตฟอร์มด้วย
             if (index === editTargetIndex) {
-                editTargetIndex = -1;
-                submitBtn.innerText = "บันทึกรายการ";
-                submitBtn.style.backgroundColor = "#3b82f6";
-                editStatusBox.style.display = "none";
-                descriptionInput.value = '';
-                amountInput.value = '';
+                editTargetIndex = -1; submitBtn.innerText = "บันทึกรายการ"; submitBtn.style.backgroundColor = "#3b82f6"; editStatusBox.style.display = "none";
+                descriptionInput.value = ''; amountInput.value = '';
             }
-            transactions.splice(index, 1);
-            updateLocalStorage();
-            updateUI();
+            transactions.splice(index, 1); updateLocalStorage(); updateUI();
         }
     }
 
-    // ==========================================
-    // ฟังก์ชันฟีเจอร์ใหม่: ส่งออกไฟล์ Excel (.xlsx)
-    // ==========================================
+    // ฟังก์ชันส่งออกเป็น Excel (.xlsx)
     function exportToExcel() {
-        if (transactions.length === 0) {
-            alert('ไม่มีข้อมูลให้ส่งออกไฟล์ Excel');
-            return;
-        }
-
-        // จัดรูปโครงสร้างหัวตารางและแถวสำหรับข้อมูล Excel
-        const excelRows = [
-            ["วันที่-เวลา", "รายการ", "รายรับ (บาท)", "รายจ่าย (บาท)"] // หัวตารางหลัก
-        ];
-
+        if (transactions.length === 0) { alert('ไม่มีข้อมูลให้ส่งออกไฟล์ Excel'); return; }
+        const excelRows = [ ["วันที่-เวลา", "รายการ", "รายรับ (บาท)", "รายจ่าย (บาท)"] ];
         transactions.forEach(t => {
             const incVal = t.type === 'income' ? t.amount : 0;
             const expVal = t.type === 'expense' ? t.amount : 0;
             excelRows.push([t.dateText, t.description, incVal, expVal]);
         });
-
-        // ดำเนินการสร้าง workbook และแผ่นชีทด้วยระบบ SheetJS
         const worksheet = XLSX.utils.aoa_to_sheet(excelRows);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "บันทึกรายรับรายจ่าย");
-
-        // ปรับตั้งค่าความกว้างคอลัมน์ใน Excel ให้พอดีอัตโนมัติเพื่อความสวยงาม
         worksheet['!cols'] = [ {wch: 20}, {wch: 25}, {wch: 15}, {wch: 15} ];
-
-        // สั่งให้ดาวน์โหลดไฟล์ลงเครื่องคอมพิวเตอร์หรือมือถือทันที
         const today = new Date();
         const filename = `บัญชีรายรับรายจ่าย_${today.getDate()}_${today.getMonth()+1}_${today.getFullYear()}.xlsx`;
         XLSX.writeFile(workbook, filename);
     }
 
-    // ระบบระบบความปลอดภัยสำรองแบบข้อความ JSON เดิม
+    // ==========================================
+    // ฟังก์ชันฟีเจอร์ใหม่: ส่งออกรายงานเป็นไฟล์ PDF (.pdf)
+    // ==========================================
+    function exportToPDF() {
+        if (transactions.length === 0) {
+            alert('ไม่มีข้อมูลในระบบให้ส่งออกเป็น PDF');
+            return;
+        }
+        
+        // ใส่เวลาปัจจุบันลงไปในรายงาน PDF
+        const now = new Date();
+        document.getElementById('pdf-print-date').innerText = `เอกสารจัดทำเมื่อ: ${now.toLocaleDateString('th-TH')}  เวลา ${now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})} น.`;
+        
+        // เรียกใช้ฟังก์ชันพิมพ์ของเบราว์เซอร์ ซึ่งเราดัดแปลงสไตล์ CSS พิมพ์สำหรับ PDF ไว้แล้วด้านบน
+        window.print();
+    }
+
+    // ระบบระบบความปลอดภัยสำรองข้อมูลระบบแบบเดิม
     function exportBackup() {
         if (transactions.length === 0) { alert('ไม่มีข้อมูลให้สำรอง'); return; }
         const dataStr = JSON.stringify(transactions, null, 2);
         const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
         const today = new Date();
-        const filename = `wallet_backup_v4_${today.getDate()}_${today.getMonth()+1}_${today.getFullYear()}.json`;
+        const filename = `wallet_backup_v5_${today.getDate()}_${today.getMonth()+1}_${today.getFullYear()}.json`;
         const link = document.createElement('a'); link.setAttribute('href', dataUri); link.setAttribute('download', filename); link.click();
     }
 
@@ -573,8 +614,7 @@
                 const importedData = JSON.parse(e.target.result);
                 if (Array.isArray(importedData)) {
                     if (confirm('ยืนยันนำเข้าข้อมูลระบบ? ข้อมูลเดิมจะถูกเขียนทับ')) {
-                        transactions = importedData; editTargetIndex = -1;
-                        updateLocalStorage(); updateUI(); alert('นำเข้าสำเร็จ!');
+                        transactions = importedData; editTargetIndex = -1; updateLocalStorage(); updateUI(); alert('นำเข้าสำเร็จ!');
                     }
                 } else { alert('ไฟล์ผิดรูปแบบ'); }
             } catch (err) { alert('อ่านไฟล์ล้มเหลว'); }
