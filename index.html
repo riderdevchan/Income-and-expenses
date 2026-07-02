@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Money">
     
-    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%2310b981'/><stop offset='100%25' stop-color='%233b82f6'/></linearGradient></defs><rect width='512' height='512' rx='120' fill='%231e293b'/><circle cx='256' cy='256' r='160' fill='none' stroke='url(%23g)' stroke-width='20' stroke-dasharray='15 10'/><path d='M256 140 v232 M210 190 h80 a40 40 0 0 1 0 80 h-30 a40 40 0 0 0 0 80 h90' fill='none' stroke='url(%23g)' stroke-width='32' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluent/512/money-bag.png">
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -33,6 +33,27 @@
             box-sizing: border-box;
             margin-bottom: 60px;
         }
+        
+        /* แถบแจ้งเตือนปุ่มติดตั้งแอปแบบไม่ต้องกด 3 จุด */
+        .install-bar {
+            display: none;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
         h2 {
             text-align: center;
             color: #2c3e50;
@@ -230,7 +251,7 @@
         @media print {
             body { background-color: #ffffff; padding: 0; margin: 0; display: block; }
             .container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; margin: 0; }
-            .tab-navigation, #page-form, .edit-warning, .file-zone, .action-btns, .date-display { display: none !important; }
+            .tab-navigation, #page-form, .edit-warning, .file-zone, .action-btns, .date-display, .install-bar { display: none !important; }
             #page-history { display: block !important; }
             .summary-table { margin-top: 20px; table-layout: auto; }
             .summary-table th, .summary-table td { font-size: 14px; padding: 8px; }
@@ -253,6 +274,10 @@
 </div>
 
 <div class="container">
+    <div id="install-banner" class="install-bar" onclick="triggerInstall()">
+        📲 กดตรงนี้เพื่อติดตั้งแอป "Money" ลงเครื่องทันที!
+    </div>
+
     <h2>📊 Money - รายรับรายจ่าย</h2>
     
     <div class="date-display" id="current-date-box">วันที่ปัจจุบัน: โหลดข้อมูล...</div>
@@ -349,7 +374,37 @@
 </div>
 
 <script>
-    // สคริปต์เปิดระบบให้สามารถติดตั้งลงบนมือถือเป็น App (Register Service Worker)
+    let deferredPrompt;
+    const installBanner = document.getElementById('install-banner');
+
+    // ดักจับ Event ระบบเพื่อสร้างปุ่มกดติดตั้งโดยตรงบนหน้าเว็บ
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // โชว์ปุ่มแถบสีฟ้าด้านบนสุดเมื่อระบบพร้อมให้ติดตั้ง
+        installBanner.style.display = 'block';
+    });
+
+    // ฟังก์ชันเมื่อผู้ใช้คลิกปุ่มติดตั้งบนหน้าเว็บ
+    function triggerInstall() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                    installBanner.style.display = 'none'; // ซ่อนปุ่มเมื่อยอมรับการติดตั้งแล้ว
+                }
+                deferredPrompt = null;
+            });
+        }
+    }
+
+    // ซ่อนปุ่มอัตโนมัติหากผู้ใช้ติดตั้งเสร็จแล้วเปิดผ่านตัวแอปโดยตรง
+    window.addEventListener('appinstalled', () => {
+        installBanner.style.display = 'none';
+        alert('ติดตั้งแอป Money เรียบร้อยแล้วบนหน้าจอโฮมของคุณ!');
+    });
+
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').then(() => console.log('PWA Ready'));
     }
