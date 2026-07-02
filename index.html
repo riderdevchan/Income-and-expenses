@@ -3,8 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบันทึกรายรับ-รายจ่าย สมบูรณ์แบบ v5.0</title>
-    <!-- โหลดไลบรารี SheetJS สำหรับใช้แปลงข้อมูลเป็นไฟล์ .xlsx -->
+    <title>Money - บันทึกรายรับรายจ่าย</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Money">
+    
+    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%2310b981'/><stop offset='100%25' stop-color='%233b82f6'/></linearGradient></defs><rect width='512' height='512' rx='120' fill='%231e293b'/><circle cx='256' cy='256' r='160' fill='none' stroke='url(%23g)' stroke-width='20' stroke-dasharray='15 10'/><path d='M256 140 v232 M210 190 h80 a40 40 0 0 1 0 80 h-30 a40 40 0 0 0 0 80 h90' fill='none' stroke='url(%23g)' stroke-width='32' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body {
@@ -99,7 +107,6 @@
             border-color: #3b82f6;
         }
 
-        /* ปรับปรุงดีไซน์ตัวเลือกประเภทแบบปุ่มกดด้านนอกแทน Dropdownเดิม */
         .type-selector-group {
             display: flex;
             gap: 10px;
@@ -129,13 +136,11 @@
             transition: all 0.2s;
             user-select: none;
         }
-        /* เมื่อวิทยุประเภทรายรับถูกเลือก */
         #type-income:checked + .type-label {
             background-color: #e6fbf1;
             color: #065f46;
             border-color: #10b981;
         }
-        /* เมื่อวิทยุประเภทรายจ่ายถูกเลือก */
         #type-expense:checked + .type-label {
             background-color: #fef2f2;
             color: #991b1b;
@@ -188,7 +193,6 @@
         .app-page { display: none; }
         .app-page.active { display: block; }
 
-        /* โซนปุ่มส่งออกและการจัดการไฟล์ */
         .file-zone {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -202,10 +206,8 @@
         }
         .btn-excel { background-color: #16a34a; }
         .btn-excel:hover { background-color: #15803d; }
-        
         .btn-pdf { background-color: #dc2626; }
         .btn-pdf:hover { background-color: #b91c1c; }
-
         .btn-backup { background-color: #059669; }
         .btn-backup:hover { background-color: #047857; }
         .btn-import { background-color: #475569; position: relative; }
@@ -225,9 +227,6 @@
         .btn-delete { background: #fee2e2; color: #ef4444; }
         .btn-delete:hover { background: #fca5a5; }
 
-        /* =================================================== */
-        /* CSS โหมดจัดหน้าพิมพ์เพื่อส่งออก PDF (ซ่อนปุ่มและหน้าส่วนเกินตอนพิมพ์) */
-        /* =================================================== */
         @media print {
             body { background-color: #ffffff; padding: 0; margin: 0; display: block; }
             .container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; margin: 0; }
@@ -248,18 +247,16 @@
 </head>
 <body>
 
-<!-- ส่วนหัวเอกสารที่จะปรากฏเฉพาะเวลาพิมพ์หรือส่งออกเป็น PDF เท่านั้น -->
 <div class="print-header" id="pdf-header">
     <h1>รายงานสรุปบัญชีรายรับ-รายจ่าย</h1>
     <p id="pdf-print-date">พิมพ์เมื่อ: </p>
 </div>
 
 <div class="container">
-    <h2>📊 รายรับ-รายจ่าย (จ.-อา.)</h2>
+    <h2>📊 Money - รายรับรายจ่าย</h2>
     
     <div class="date-display" id="current-date-box">วันที่ปัจจุบัน: โหลดข้อมูล...</div>
     
-    <!-- ตารางสรุปเงิน -->
     <table class="summary-table">
         <thead>
             <tr>
@@ -297,7 +294,6 @@
         </tbody>
     </table>
 
-    <!-- ================= หน้าที่ 1: หน้าบันทึกข้อมูล ================= -->
     <div id="page-form" class="app-page active">
         <div class="edit-warning" id="edit-status-box">⚠️ คุณกำลังอยู่ในโหมดแก้ไขรายการ!</div>
 
@@ -311,7 +307,6 @@
                 <input type="number" id="amount" step="0.01" placeholder="0.00" required>
             </div>
             
-            <!-- เปลี่ยนเป็นแบบตัวเลือกปุ่มกดด้านนอก (Radio style) -->
             <div class="form-group">
                 <label>ประเภทรายการ</label>
                 <div class="type-selector-group">
@@ -329,25 +324,21 @@
             <button type="submit" class="btn-submit" id="submit-btn">บันทึกรายการ</button>
         </form>
 
-        <!-- โซนปุ่มส่งออกและการจัดการไฟล์ทั้งหมด -->
         <div class="file-zone">
-            <button type="button" class="btn-file btn-excel" onclick="exportToExcel()">🟢 ส่งออกไฟล์ Excel (.xlsx)</button>
-            <button type="button" class="btn-file btn-pdf" onclick="exportToPDF()">🔴 ส่งออกเป็นไฟล์ PDF</button>
-            <button type="button" class="btn-file btn-backup" onclick="exportBackup()">📥 สำรองข้อมูลระบบ (JSON)</button>
+            <button type="button" class="btn-file btn-excel" onclick="exportToExcel()">🟢 ไฟล์ Excel (.xlsx)</button>
+            <button type="button" class="btn-file btn-pdf" onclick="exportToPDF()">🔴 ไฟล์ PDF</button>
+            <button type="button" class="btn-file btn-backup" onclick="exportBackup()">📥 สำรอง (JSON)</button>
             <div class="btn-file btn-import">
-                📤 นำเข้าข้อมูลระบบ (JSON)
+                📤 นำเข้า (JSON)
                 <input type="file" id="import-file" accept=".json" onchange="importBackup(event)">
             </div>
         </div>
     </div>
 
-    <!-- ================= หน้าที่ 2: หน้าประวัติรายการทั้งหมด ================= -->
     <div id="page-history" class="app-page">
         <div class="history">
             <h3>📜 ประวัติรายการทั้งหมด</h3>
-            <ul id="transaction-list" class="list-group">
-                <!-- ข้อมูลประวัติจะแสดงที่นี่ -->
-            </ul>
+            <ul id="transaction-list" class="list-group"></ul>
         </div>
     </div>
 </div>
@@ -358,6 +349,11 @@
 </div>
 
 <script>
+    // สคริปต์เปิดระบบให้สามารถติดตั้งลงบนมือถือเป็น App (Register Service Worker)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(() => console.log('PWA Ready'));
+    }
+
     const form = document.getElementById('tracker-form');
     const descriptionInput = document.getElementById('description');
     const amountInput = document.getElementById('amount');
@@ -365,7 +361,6 @@
     const submitBtn = document.getElementById('submit-btn');
     const editStatusBox = document.getElementById('edit-status-box');
     
-    // อ้างอิงตารางสรุปผล
     const dayIncomeText = document.getElementById('day-income');
     const dayExpenseText = document.getElementById('day-expense');
     const dayBalanceText = document.getElementById('day-balance');
@@ -422,7 +417,6 @@
 
     function updateUI() {
         transactionList.innerHTML = '';
-        
         let totals = { day: { inc: 0, exp: 0 }, week: { inc: 0, exp: 0 }, month: { inc: 0, exp: 0 }, all: { inc: 0, exp: 0 } };
 
         const now = new Date();
@@ -473,7 +467,6 @@
             transactionList.appendChild(item);
         });
 
-        // ดันเลขเข้าตาราง
         dayIncomeText.innerText = formatNum(totals.day.inc); dayExpenseText.innerText = formatNum(totals.day.exp);
         const dayBal = totals.day.inc - totals.day.exp; dayBalanceText.innerText = formatNum(dayBal); dayBalanceText.style.color = dayBal >= 0 ? '#0f172a' : '#ef4444';
 
@@ -498,7 +491,6 @@
         descriptionInput.value = target.description;
         amountInput.value = target.amount;
         
-        // เลือกวิทยุประเภทให้ตรงข้อมูลเดิม
         if (target.type === 'income') {
             document.getElementById('type-income').checked = true;
         } else {
@@ -515,8 +507,6 @@
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        // ดึงค่าประเภทจากวิทยุที่เลือกอยู่ข้างนอก
         const selectedType = document.querySelector('input[name="transaction-type"]:checked').value;
 
         if (editTargetIndex > -1) {
@@ -528,7 +518,7 @@
             submitBtn.innerText = "บันทึกรายการ";
             submitBtn.style.backgroundColor = "#3b82f6";
             editStatusBox.style.display = "none";
-            alert('อัปเดตข้อมูลการแก้ไขแล้ว!');
+            alert('อัปเดตเรียบร้อย!');
         } else {
             const now = new Date();
             const dateString = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
@@ -541,7 +531,7 @@
                 timestamp: now.getTime()
             };
             transactions.push(transaction);
-            alert('บันทึกข้อมูลเรียบร้อย!');
+            alert('บันทึกสำเร็จ!');
         }
 
         updateLocalStorage();
@@ -561,49 +551,31 @@
         }
     }
 
-    // ฟังก์ชันส่งออกเป็น Excel (.xlsx)
     function exportToExcel() {
-        if (transactions.length === 0) { alert('ไม่มีข้อมูลให้ส่งออกไฟล์ Excel'); return; }
+        if (transactions.length === 0) { alert('ไม่มีข้อมูล'); return; }
         const excelRows = [ ["วันที่-เวลา", "รายการ", "รายรับ (บาท)", "รายจ่าย (บาท)"] ];
         transactions.forEach(t => {
-            const incVal = t.type === 'income' ? t.amount : 0;
-            const expVal = t.type === 'expense' ? t.amount : 0;
-            excelRows.push([t.dateText, t.description, incVal, expVal]);
+            excelRows.push([t.dateText, t.description, t.type === 'income' ? t.amount : 0, t.type === 'expense' ? t.amount : 0]);
         });
         const worksheet = XLSX.utils.aoa_to_sheet(excelRows);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "บันทึกรายรับรายจ่าย");
         worksheet['!cols'] = [ {wch: 20}, {wch: 25}, {wch: 15}, {wch: 15} ];
         const today = new Date();
-        const filename = `บัญชีรายรับรายจ่าย_${today.getDate()}_${today.getMonth()+1}_${today.getFullYear()}.xlsx`;
-        XLSX.writeFile(workbook, filename);
+        XLSX.writeFile(workbook, `บัญชีรายรับรายจ่าย_${today.getDate()}_${today.getMonth()+1}.xlsx`);
     }
 
-    // ==========================================
-    // ฟังก์ชันฟีเจอร์ใหม่: ส่งออกรายงานเป็นไฟล์ PDF (.pdf)
-    // ==========================================
     function exportToPDF() {
-        if (transactions.length === 0) {
-            alert('ไม่มีข้อมูลในระบบให้ส่งออกเป็น PDF');
-            return;
-        }
-        
-        // ใส่เวลาปัจจุบันลงไปในรายงาน PDF
+        if (transactions.length === 0) { alert('ไม่มีข้อมูลสะสมให้ส่งออกเป็น PDF'); return; }
         const now = new Date();
         document.getElementById('pdf-print-date').innerText = `เอกสารจัดทำเมื่อ: ${now.toLocaleDateString('th-TH')}  เวลา ${now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})} น.`;
-        
-        // เรียกใช้ฟังก์ชันพิมพ์ของเบราว์เซอร์ ซึ่งเราดัดแปลงสไตล์ CSS พิมพ์สำหรับ PDF ไว้แล้วด้านบน
         window.print();
     }
 
-    // ระบบระบบความปลอดภัยสำรองข้อมูลระบบแบบเดิม
     function exportBackup() {
-        if (transactions.length === 0) { alert('ไม่มีข้อมูลให้สำรอง'); return; }
-        const dataStr = JSON.stringify(transactions, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        const today = new Date();
-        const filename = `wallet_backup_v5_${today.getDate()}_${today.getMonth()+1}_${today.getFullYear()}.json`;
-        const link = document.createElement('a'); link.setAttribute('href', dataUri); link.setAttribute('download', filename); link.click();
+        if (transactions.length === 0) { alert('ไม่มีข้อมูล'); return; }
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(JSON.stringify(transactions, null, 2));
+        const link = document.createElement('a'); link.setAttribute('href', dataUri); link.setAttribute('download', 'wallet_backup.json'); link.click();
     }
 
     function importBackup(event) {
@@ -613,11 +585,11 @@
             try {
                 const importedData = JSON.parse(e.target.result);
                 if (Array.isArray(importedData)) {
-                    if (confirm('ยืนยันนำเข้าข้อมูลระบบ? ข้อมูลเดิมจะถูกเขียนทับ')) {
-                        transactions = importedData; editTargetIndex = -1; updateLocalStorage(); updateUI(); alert('นำเข้าสำเร็จ!');
+                    if (confirm('ยืนยันนำเข้าข้อมูลระบบ?')) {
+                        transactions = importedData; editTargetIndex = -1; updateLocalStorage(); updateUI(); alert('สำเร็จ!');
                     }
                 } else { alert('ไฟล์ผิดรูปแบบ'); }
-            } catch (err) { alert('อ่านไฟล์ล้มเหลว'); }
+            } catch (err) { alert('ล้มเหลว'); }
             event.target.value = '';
         };
         reader.readAsText(file);
