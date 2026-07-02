@@ -9,7 +9,7 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://img.icons8.com/fluent/512/money-bag.png",
+      "src": "money.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
