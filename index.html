@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money - บันทึกรายรับรายจ่าย</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Money">
+    <link rel="apple-touch-icon" href="money1.png">
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+            margin-bottom: 75px;
+        }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 15px; margin-top: 0; font-size: 22px; }
+        .date-display { text-align: center; background: linear-gradient(135deg, #e0e7ff, #e0f2fe); color: #1e3a8a; padding: 8px; border-radius: 8px; font-weight: 600; font-size: 14px; margin-bottom: 15px; border: 1px solid #bae6fd; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #f8fafc; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; table-layout: fixed; }
+        .summary-table th, .summary-table td { padding: 8px 4px; text-align: center; font-size: 12px; border: 1px solid #e2e8f0; word-wrap: break-word; }
+        .summary-table th { background-color: #f1f5f9; color: #475569; font-weight: 600; }
+        .income { color: #10b981; font-weight: bold; }
+        .expense { color: #ef4444; font-weight: bold; }
+        .balance { color: #0f172a; font-weight: bold; }
+        @media (min-width: 400px) { .summary-table th, .summary-table td { font-size: 13.5px; padding: 10px 6px; } }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #334155; font-size: 14px; }
+        input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        input:focus { outline: none; border-color: #3b82f6; }
+        .type-selector-group { display: flex; gap: 10px; margin-top: 5px; }
+        .type-option { flex: 1; position: relative; }
+        .type-option input[type="radio"] { absolute; opacity: 0; width: 0; height: 0; }
+        .type-label { display: block; text-align: center; padding: 12px; background-color: #f1f5f9; color: #475569; border: 2px solid #e2e8f0; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; user-select: none; }
+        #type-income:checked + .type-label { background-color: #e6fbf1; color: #065f46; border-color: #10b981; }
+        #type-expense:checked + .type-label { background-color: #fef2f2; color: #991b1b; border-color: #ef4444; }
+        .btn-submit { width: 100%; padding: 12px; background-color: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 5px; }
+        .btn-submit:hover { background-color: #2563eb; }
+        .edit-warning { display: none; background-color: #fef3c7; color: #92400e; padding: 8px; border-radius: 8px; font-size: 13px; margin-bottom: 10px; text-align: center; border: 1px solid #fde68a; font-weight: 600; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-header button { background-color: #475569; color: white; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+        .weekday-label { font-weight: bold; font-size: 11px; color: #64748b; padding: 5px 0; }
+        .calendar-day { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; min-height: 52px; padding: 2px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; box-sizing: border-box; }
+        .calendar-day:hover { background-color: #f1f5f9; }
+        .calendar-day .day-num { font-size: 11px; font-weight: bold; color: #475569; text-align: left; }
+        .calendar-day .day-inc { font-size: 8px; color: #10b981; font-weight: bold; }
+        .calendar-day .day-exp { font-size: 8px; color: #ef4444; font-weight: bold; }
+        .calendar-day.negative-balance { background-color: #fee2e2; border-color: #fca5a5; }
+        .calendar-day.positive-balance { background-color: #ecfdf5; border-color: #a7f3d0; }
+        .calendar-day.selected-day { border: 2px solid #3b82f6 !important; }
+        .calendar-day.empty-day { background: none; border: none; cursor: default; }
+        .bottom-action-zone { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #cbd5e1; }
+        .btn-pwa-action { width: 100%; padding: 10px; font-size: 14px; font-weight: 600; color: white; border: none; border-radius: 8px; cursor: pointer; text-align: center; transition: background 0.2s; }
+        .btn-pwa-install { background-color: #2563eb; }
+        .btn-pwa-install:hover { background-color: #1d4ed8; }
+        .btn-pwa-uninstall { background-color: #64748b; }
+        .btn-pwa-uninstall:hover { background-color: #475569; }
+        .file-zone { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1; }
+        .btn-file { padding: 10px; font-size: 12px; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; }
+        .btn-excel { background-color: #16a34a; }
+        .btn-excel:hover { background-color: #15803d; }
+        .btn-pdf { background-color: #dc2626; }
+        .btn-pdf:hover { background-color: #b91c1c; }
+        .btn-backup { background-color: #059669; }
+        .btn-backup:hover { background-color: #047857; }
+        .btn-import { background-color: #475569; position: relative; }
+        .btn-import:hover { background-color: #334155; }
+        .btn-import input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .history h3 { color: #1e293b; font-size: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px; margin-top: 15px; }
+        .list-group { list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .list-item.inc { border-left: 4px solid #10b981; }
+        .list-item.exp { border-left: 4px solid #ef4444; }
+        .action-btns { display: flex; gap: 5px; align-items: center; }
+        .btn-action { border: none; padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+        .btn-edit { background: #dbeafe; color: #1d4ed8; }
+        .btn-edit:hover { background: #bfdbfe; }
+        .btn-delete { background: #fee2e2; color: #ef4444; }
+        .btn-delete:hover { background: #fca5a5; }
+        .tab-navigation { position: fixed; bottom: 0; left: 0; right: 0; background-color: #ffffff; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); border-top: 1px solid #e2e8f0; z-index: 1000; }
+        .tab-btn { flex: 1; text-align: center; padding: 12px 0; background: none; border: none; color: #64748b; font-weight: 600; font-size: 14px; cursor: pointer; }
+        .tab-btn.active { color: #3b82f6; border-top: 3px solid #3b82f6; background-color: #f8fafc; }
+        .app-page { display: none; }
+        .app-page.active { display: block; }
+        .print-header { display: none; }
+        @media print {
+            body { background-color: #ffffff; padding: 0; margin: 0; display: block; }
+            .container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; margin: 0; }
+            .tab-navigation, #page-form, .edit-warning, .file-zone, .action-btns, .date-display, .bottom-action-zone, .calendar-section { display: none !important; }
+            #page-history { display: block !important; }
+            .summary-table { margin-top: 20px; table-layout: auto; }
+            .summary-table th, .summary-table td { font-size: 14px; padding: 8px; }
+            .list-group { max-height: none; overflow: visible; }
+            .list-item { page-break-inside: avoid; border-bottom: 1px solid #666; padding: 12px 0; }
+            .list-item.inc { border-left: 5px solid #10b981; }
+            .list-item.exp { border-left: 5px solid #ef4444; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; }
+            .print-header h1 { margin: 0 0 5px 0; font-size: 24px; color: #1e293b; }
+            .print-header p { margin: 0; color: #64748b; font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="print-header" id="pdf-header">
+    <h1>รายงานสรุปบัญชีรายรับ-รายจ่าย</h1>
+    <p id="pdf-print-date">พิมพ์เมื่อ: </p>
+</div>
+
+<div class="container">
+    <h2>📊 Money - รายรับรายจ่าย</h2>
+    <div class="date-display" id="current-date-box">วันที่ปัจจุบัน: โหลดข้อมูล...</div>
+    
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th style="width: 28%;">ช่วงเวลา</th>
+                <th>รายรับ (+)</th>
+                <th>รายจ่าย (-)</th>
+                <th style="width: 28%;">คงเหลือ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>วันนี้</strong></td>
+                <td class="income" id="day-income">0.00</td>
+                <td class="expense" id="day-expense">0.00</td>
+                <td class="balance" id="day-balance">0.00</td>
+            </tr>
+            <tr>
+                <td><strong>สัปดาห์นี้</strong></td>
+                <td class="income" id="week-income">0.00</td>
+                <td class="expense" id="week-expense">0.00</td>
+                <td class="balance" id="week-balance">0.00</td>
+            </tr>
+            <tr>
+                <td><strong>เดือนนี้</strong></td>
+                <td class="income" id="month-income">0.00</td>
+                <td class="expense" id="month-expense">0.00</td>
+                <td class="balance" id="month-balance">0.00</td>
+            </tr>
+            <tr>
+                <td><strong>ทั้งหมด</strong></td>
+                <td class="income" id="total-income">0.00</td>
+                <td class="expense" id="total-expense">0.00</td>
+                <td class="balance" id="total-balance">0.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div id="page-form" class="app-page active">
+        <div class="edit-warning" id="edit-status-box">⚠️ คุณกำลังอยู่ในโหมดแก้ไขรายการ!</div>
+        <form id="tracker-form">
+            <div class="form-group">
+                <label for="description">รายการ</label>
+                <input type="text" id="description" placeholder="เช่น ค่าอาหาร, เงินเดือน" required>
+            </div>
+            <div class="form-group">
+                <label for="amount">จำนวนเงิน (บาท)</label>
+                <input type="number" id="amount" step="0.01" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+                <label>ประเภทรายการ</label>
+                <div class="type-selector-group">
+                    <div class="type-option">
+                        <input type="radio" name="transaction-type" id="type-income" value="income" checked>
+                        <label for="type-income" class="type-label">รายรับ (+)</label>
+                    </div>
+                    <div class="type-option">
+                        <input type="radio" name="transaction-type" id="type-expense" value="expense">
+                        <label for="type-expense" class="type-label">รายจ่าย (-)</label>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn-submit" id="submit-btn">บันทึกรายการ</button>
+        </form>
+
+        <div class="file-zone">
+            <button type="button" class="btn-file btn-excel" onclick="exportToExcel()">🟢 ไฟล์ Excel (.xlsx)</button>
+            <button type="button" class="btn-file btn-pdf" onclick="exportToPDF()">🔴 ไฟล์ PDF</button>
+            <button type="button" class="btn-file btn-backup" onclick="exportBackup()">📥 สำรองข้อมูล (JSON)</button>
+            <div class="btn-file btn-import">
+                📤 นำเข้าข้อมูล (JSON / Excel)
+                <input type="file" id="import-file" accept=".json, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .xlsx, .xls" onchange="handleSmartImport(event)">
+            </div>
+        </div>
+        <div class="bottom-action-zone">
+            <button id="pwa-action-btn" class="btn-pwa-action btn-pwa-install" onclick="handlePwaAction()">📥 ติดตั้งแอป "Money" ลงเครื่อง</button>
+        </div>
+    </div>
+
+    <div id="page-history" class="app-page">
+        <div class="calendar-section">
+            <div class="calendar-header">
+                <button onclick="changeMonth(-1)">◀ เดือนก่อน</button>
+                <strong id="calendar-month-year" style="color: #2c3e50; font-size: 16px;">โหลดข้อมูล...</strong>
+                <button onclick="changeMonth(1)">เดือนถัดไป ▶</button>
+            </div>
+            <div class="calendar-grid" id="calendar-body"></div>
+        </div>
+        <div class="history">
+            <h3 id="history-title">📜 รายการประจำวันที่เลือก</h3>
+            <ul id="transaction-list" class="list-group"></ul>
+        </div>
+    </div>
+</div>
+
+<div class="tab-navigation">
+    <button class="tab-btn active" id="tab-form-btn" onclick="switchPage('form')">📝 บันทึกรายการ</button>
+    <button class="tab-btn" id="tab-history-btn" onclick="switchPage('history')">📜 ประวัติปฏิทิน</button>
+</div>
+
+<script>
+    let deferredPrompt;
+    const pwaActionBtn = document.getElementById('pwa-action-btn');
+
+    function checkAppMode() {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        if (isStandalone) { setButtonToUninstall(); } else { pwaActionBtn.style.display = 'none'; }
+    }
+    function setButtonToUninstall() {
+        pwaActionBtn.style.display = 'block';
+        pwaActionBtn.innerText = '❌ ถอนการติดตั้งแอป (Uninstall)';
+        pwaActionBtn.className = 'btn-pwa-action btn-pwa-uninstall';
+    }
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault(); deferredPrompt = e;
+        pwaActionBtn.style.display = 'block';
+        pwaActionBtn.innerText = '📥 ติดตั้งแอป "Money" ลงเครื่อง';
+        pwaActionBtn.className = 'btn-pwa-action btn-pwa-install';
+    });
+    function handlePwaAction() {
+        if (pwaActionBtn.classList.contains('btn-pwa-install')) {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') { setButtonToUninstall(); }
+                    deferredPrompt = null;
+                });
+            } else { alert('สำหรับ iOS (iPhone): กรุณากดปุ่ม "แชร์" บน Safari แล้วเลือก "เพิ่มไปยังหน้าจอโฮม" ครับ'); }
+        } else {
+            alert('⚙️ วิธีการถอนการติดตั้งแอป:\n\n- บนแอนดรอยด์: กดค้างที่ไอคอนแอป "Money" บนหน้าจอหลัก แล้วเลือก "ถอนการติดตั้ง"\n- บน iPhone: กดค้างที่ไอคอนแอปแล้วเลือก "ลบที่คั่นหน้า" ครับ');
+        }
+    }
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(() => console.log('Service Worker Active'));
+    }
+
+    const form = document.getElementById('tracker-form');
+    const descriptionInput = document.getElementById('description');
+    const amountInput = document.getElementById('amount');
+    const transactionList = document.getElementById('transaction-list');
+    const submitBtn = document.getElementById('submit-btn');
+    const editStatusBox = document.getElementById('edit-status-box');
+    
+    const dayIncomeText = document.getElementById('day-income');
+    const dayExpenseText = document.getElementById('day-expense');
+    const dayBalanceText = document.getElementById('day-balance');
+    const weekIncomeText = document.getElementById('week-income');
+    const weekExpenseText = document.getElementById('week-expense');
+    const weekBalanceText = document.getElementById('week-balance');
+    const monthIncomeText = document.getElementById('month-income');
+    const monthExpenseText = document.getElementById('month-expense');
+    const monthBalanceText = document.getElementById('month-balance');
+    const totalIncomeText = document.getElementById('total-income');
+    const totalExpenseText = document.getElementById('total-expense');
+    const totalBalanceText = document.getElementById('total-balance');
+
+    let transactions = JSON.parse(localStorage.getItem('transactions_v2')) || [];
+    let editTargetIndex = -1;
+    let currentCalDate = new Date();
+    let selectedDateStr = new Date().toLocaleDateString('th-TH');
+    const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+    function showCurrentDate() {
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date-box').innerText = `📅 วันนี้: ${today.toLocaleDateString('th-TH', options)}`;
+    }
+    function switchPage(pageName) {
+        document.querySelectorAll('.app-page').forEach(page => page.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        if (pageName === 'form') {
+            document.getElementById('page-form').classList.add('active');
+            document.getElementById('tab-form-btn').classList.add('active');
+        } else if (pageName === 'history') {
+            document.getElementById('page-history').classList.add('active');
+            document.getElementById('tab-history-btn').classList.add('active');
+            renderCalendar();
+        }
+    }
+    function formatNum(num) { return num.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+    function getMondayAndSundayOfCurrentWeek() {
+        const now = new Date();
+        const currentDay = now.getDay(); 
+        const monday = new Date(now);
+        const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay; 
+        monday.setDate(now.getDate() + distanceToMonday);
+        monday.setHours(0, 0, 0, 0);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        sunday.setHours(23, 59, 59, 999);
+        return { start: monday.getTime(), end: sunday.getTime() };
+    }
+
+    function renderCalendar() {
+        const year = currentCalDate.getFullYear();
+        const month = currentCalDate.getMonth();
+        document.getElementById('calendar-month-year').innerText = `${thaiMonths[month]} ${year + 543}`;
+        const calendarBody = document.getElementById('calendar-body');
+        calendarBody.innerHTML = '';
+        const weekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+        weekdays.forEach(day => {
+            const div = document.createElement('div'); div.className = 'weekday-label'; div.innerText = day; calendarBody.appendChild(div);
+        });
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        for (let i = 0; i < firstDayIndex; i++) {
+            const emptyDiv = document.createElement('div'); emptyDiv.className = 'calendar-day empty-day'; calendarBody.appendChild(emptyDiv);
+        }
+        for (let day = 1; day <= totalDays; day++) {
+            const dayDate = new Date(year, month, day);
+            const dayDateStr = dayDate.toLocaleDateString('th-TH');
+            let dayInc = 0; let dayExp = 0;
+            transactions.forEach(t => {
+                const tDateStr = new Date(t.timestamp).toLocaleDateString('th-TH');
+                if (tDateStr === dayDateStr) {
+                    if (t.type === 'income') dayInc += t.amount; else dayExp += t.amount;
+                }
+            });
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day';
+            const dayBalance = dayInc - dayExp;
+            if (dayInc > 0 || dayExp > 0) {
+                if (dayBalance < 0) dayDiv.classList.add('negative-balance');
+                else if (dayBalance > 0) dayDiv.classList.add('positive-balance');
+            }
+            if (dayDateStr === selectedDateStr) dayDiv.classList.add('selected-day');
+            dayDiv.innerHTML = `
+                <div class="day-num">${day}</div>
+                <div>
+                    ${dayInc > 0 ? `<div class="day-inc">+${Math.floor(dayInc)}</div>` : ''}
+                    ${dayExp > 0 ? `<div class="day-exp">-${Math.floor(dayExp)}</div>` : ''}
+                </div>
+            `;
+            dayDiv.onclick = () => { selectedDateStr = dayDateStr; renderCalendar(); updateTransactionList(); };
+            calendarBody.appendChild(dayDiv);
+        }
+        updateTransactionList();
+    }
+    function changeMonth(direction) { currentCalDate.setMonth(currentCalDate.getMonth() + direction); renderCalendar(); }
+    
+    function updateTransactionList() {
+        transactionList.innerHTML = '';
+        document.getElementById('history-title').innerText = `📜 รายการประจำวันที่: ${selectedDateStr}`;
+        let dayTransactions = transactions.filter(t => new Date(t.timestamp).toLocaleDateString('th-TH') === selectedDateStr);
+        if (dayTransactions.length === 0) {
+            transactionList.innerHTML = '<li style="text-align:center; color:#94a3b8; padding: 20px 0; font-size:13.5px;">ไม่มีการบันทึกรายการในวันนี้</li>';
+            return;
+        }
+        dayTransactions.reverse().forEach((transaction) => {
+            const actualIndex = transactions.findIndex(t => t.timestamp === transaction.timestamp);
+            const isInc = transaction.type === 'income';
+            const item = document.createElement('li');
+            item.classList.add('list-item', isInc ? 'inc' : 'exp');
+            item.innerHTML = `
+                <div>
+                    <strong>${transaction.description}</strong> <br>
+                    <small style="color:#94a3b8; font-size:11px;">${transaction.dateText}</small>
+                </div>
+                <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+                    <span class="${isInc ? 'income' : 'expense'}" style="font-weight:600;">
+                        ${isInc ? '+' : '-'}${formatNum(transaction.amount)} บ.
+                    </span>
+                    <div class="action-btns">
+                        <button class="btn-action btn-edit" onclick="startEditTransaction(${actualIndex})">แก้ไข</button>
+                        <button class="btn-action btn-delete" onclick="deleteTransaction(${actualIndex})">ลบ</button>
+                    </div>
+                </div>
+            `;
+            transactionList.appendChild(item);
+        });
+    }
+
+    function updateUI() {
+        let totals = { day: { inc: 0, exp: 0 }, week: { inc: 0, exp: 0 }, month: { inc: 0, exp: 0 }, all: { inc: 0, exp: 0 } };
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const currentWeekRange = getMondayAndSundayOfCurrentWeek();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        transactions.forEach((transaction) => {
+            const tDate = new Date(transaction.timestamp);
+            const tTime = tDate.getTime();
+            const isInc = transaction.type === 'income';
+            const amt = transaction.amount;
+            if (isInc) totals.all.inc += amt; else totals.all.exp += amt;
+            if (tTime >= startOfToday) { if (isInc) totals.day.inc += amt; else totals.day.exp += amt; }
+            if (tTime >= currentWeekRange.start && tTime <= currentWeekRange.end) { if (isInc) totals.week.inc += amt; else totals.week.exp += amt; }
+            if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) { if (isInc) totals.month.inc += amt; else totals.month.exp += amt; }
+        });
+        dayIncomeText.innerText = formatNum(totals.day.inc); dayExpenseText.innerText = formatNum(totals.day.exp);
+        const dayBal = totals.day.inc - totals.day.exp; dayBalanceText.innerText = formatNum(dayBal); dayBalanceText.style.color = dayBal >= 0 ? '#0f172a' : '#ef4444';
+        weekIncomeText.innerText = formatNum(totals.week.inc); weekExpenseText.innerText = formatNum(totals.week.exp);
+        const weekBal = totals.week.inc - totals.week.exp; weekBalanceText.innerText = formatNum(weekBal); weekBalanceText.style.color = weekBal >= 0 ? '#0f172a' : '#ef4444';
+        monthIncomeText.innerText = formatNum(totals.month.inc); monthExpenseText.innerText = formatNum(totals.month.exp);
+        const monthBal = totals.month.inc - totals.month.exp; monthBalanceText.innerText = formatNum(monthBal); monthBalanceText.style.color = monthBal >= 0 ? '#0f172a' : '#ef4444';
+        totalIncomeText.innerText = formatNum(totals.all.inc); totalExpenseText.innerText = formatNum(totals.all.exp);
+        const allBal = totals.all.inc - totals.all.exp; totalBalanceText.innerText = formatNum(allBal); totalBalanceText.style.color = allBal >= 0 ? '#0f172a' : '#ef4444';
+        if (document.getElementById('page-history').classList.contains('active')) { renderCalendar(); }
+    }
+
+    function updateLocalStorage() { localStorage.setItem('transactions_v2', JSON.stringify(transactions)); }
+    
+    function startEditTransaction(index) {
+        const target = transactions[index]; if(!target) return;
+        descriptionInput.value = target.description; amountInput.value = target.amount;
+        if (target.type === 'income') { document.getElementById('type-income').checked = true; } else { document.getElementById('type-expense').checked = true; }
+        editTargetIndex = index; submitBtn.innerText = "🔄 อัปเดตรายการที่แก้ไข"; submitBtn.style.backgroundColor = "#eab308"; editStatusBox.style.display = "block";
+        switchPage('form');
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const selectedType = document.querySelector('input[name="transaction-type"]:checked').value;
+        if (editTargetIndex > -1) {
+            transactions[editTargetIndex].description = descriptionInput.value;
+            transactions[editTargetIndex].amount = parseFloat(amountInput.value);
+            transactions[editTargetIndex].type = selectedType;
+            editTargetIndex = -1; submitBtn.innerText = "บันทึกรายการ"; submitBtn.style.backgroundColor = "#3b82f6"; editStatusBox.style.display = "none";
+            alert('อัปเดตเรียบร้อย!');
+        } else {
+            const now = new Date();
+            const dateString = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+            const transaction = { description: descriptionInput.value, amount: parseFloat(amountInput.value), type: selectedType, dateText: dateString, timestamp: now.getTime() };
+            transactions.push(transaction); alert('บันทึกสำเร็จ!');
+        }
+        updateLocalStorage(); updateUI();
+        descriptionInput.value = ''; amountInput.value = '';
+    });
+
+    function deleteTransaction(index) {
+        if(index > -1 && confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
+            if (index === editTargetIndex) {
+                editTargetIndex = -1; submitBtn.innerText = "บันทึกรายการ"; submitBtn.style.backgroundColor = "#3b82f6"; editStatusBox.style.display = "none";
+                descriptionInput.value = ''; amountInput.value = '';
+            }
+            transactions.splice(index, 1); updateLocalStorage(); updateUI();
+        }
+    }
+
+    function exportToExcel() {
+        if (transactions.length === 0) { alert('ไม่มีข้อมูล'); return; }
+        const excelRows = [ ["วันที่-เวลา", "รายการ", "รายรับ (บาท)", "รายจ่าย (บาท)"] ];
+        transactions.forEach(t => {
+            excelRows.push([t.dateText, t.description, t.type === 'income' ? t.amount : 0, t.type === 'expense' ? t.amount : 0]);
+        });
+        const worksheet = XLSX.utils.aoa_to_sheet(excelRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "บันทึกรายรับรายจ่าย");
+        worksheet['!cols'] = [ {wch: 20}, {wch: 25}, {wch: 15}, {wch: 15} ];
+        const today = new Date();
+        XLSX.writeFile(workbook, `บัญชีรายรับรายจ่าย_${today.getDate()}_${today.getMonth()+1}.xlsx`);
+    }
+
+    function exportToPDF() {
+        if (transactions.length === 0) { alert('ไม่มีข้อมูลสะสมให้ส่งออกเป็น PDF'); return; }
+        const now = new Date();
+        document.getElementById('pdf-print-date').innerText = `เอกสารจัดทำเมื่อ: ${now.toLocaleDateString('th-TH')}  เวลา ${now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})} น.`;
+        window.print();
+    }
+
+    function exportBackup() {
+        if (transactions.length === 0) { alert('ไม่มีข้อมูล'); return; }
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(JSON.stringify(transactions, null, 2));
+        const link = document.createElement('a'); link.setAttribute('href', dataUri); link.setAttribute('download', 'wallet_backup.json'); link.click();
+    }
+
+    function handleSmartImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+
+        if (fileExtension === 'json') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (Array.isArray(importedData)) {
+                        if (confirm('ยืนยันนำเข้าข้อมูลจากไฟล์ JSON?')) {
+                            transactions = importedData; editTargetIndex = -1; updateLocalStorage(); updateUI(); alert('นำเข้าสำเร็จ!');
+                        }
+                    } else { alert('โครงสร้างไฟล์ JSON ไม่ถูกต้อง'); }
+                } catch (err) { alert('อ่านไฟล์ JSON ล้มเหลว'); }
+            };
+            reader.readAsText(file);
+        } 
+        else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rawRows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ''});
+                    
+                    if (rawRows.length <= 1) { alert('ไม่พบข้อมูลประวัติในไฟล์ Excel'); return; }
+
+                    if (confirm('ยืนยันนำเข้าข้อมูลบัญชีจากไฟล์ Excel ย้อนหลัง? ข้อมูลเดิมในเครื่องจะถูกเขียนทับ')) {
+                        let parsedTransactions = [];
+                        let headerIndex = 0;
+                        
+                        for(let i=0; i<rawRows.length; i++) {
+                            if(rawRows[i] && rawRows[i].toString().includes('รายการ')) {
+                                headerIndex = i;
+                                break;
+                            }
+                        }
+
+                        for (let i = headerIndex + 1; i < rawRows.length; i++) {
+                            const row = rawRows[i];
+                            if (!row || row.length === 0) continue;
+
+                            let rawDate = row[0];
+                            let rawDesc = row[1];
+                            let rawInc = row[2];
+                            let rawExp = row[3];
+
+                            if (rawDesc === '' && rawInc === '' && rawExp === '') continue;
+
+                            let description = rawDesc !== undefined ? String(rawDesc).trim() : 'ไม่ระบุรายการ';
+                            if (description === '') description = 'ไม่ระบุรายการ';
+
+                            let incNum = 0;
+                            let expNum = 0;
+
+                            if (rawInc !== undefined && rawInc !== '') {
+                                incNum = parseFloat(String(rawInc).replace(/[^0-9.]/g, '')) || 0;
+                            }
+                            if (rawExp !== undefined && rawExp !== '') {
+                                expNum = parseFloat(String(rawExp).replace(/[^0-9.]/g, '')) || 0;
+                            }
+
+                            let type = 'income';
+                            let amount = incNum;
+                            if (expNum > 0) { type = 'expense'; amount = expNum; }
+                            if (amount <= 0) continue;
+
+                            let timestamp = Date.now();
+                            let dateText = '';
+
+                            if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+                                let yr = rawDate.getFullYear();
+                                if (yr < 2400) yr += 543;
+                                dateText = rawDate.toLocaleDateString('th-TH') + ' ' + rawDate.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+                                timestamp = rawDate.getTime();
+                            } else if (rawDate !== '') {
+                                let dateStr = String(rawDate).trim();
+                                dateText = dateStr;
+                                try {
+                                    const parts = dateStr.split(' ');
+                                    const dateParts = parts[0].split(/[\/\-]/);
+                                    const d = parseInt(dateParts[0]);
+                                    const m = parseInt(dateParts[1]) - 1;
+                                    let y = parseInt(dateParts[2]);
+                                    if (y > 2500) y -= 543;
+                                    
+                                    let hr = 0, min = 0;
+                                    if (parts[1]) {
+                                        const timeParts = parts[1].split(':');
+                                        hr = parseInt(timeParts[0]) || 0;
+                                        min = parseInt(timeParts[1]) || 0;
+                                    }
+                                    const pDate = new Date(y, m, d, hr, min);
+                                    if (!isNaN(pDate.getTime())) timestamp = pDate.getTime();
+                                } catch(e) { timestamp = Date.now(); }
+                            } else {
+                                const nowObj = new Date();
+                                dateText = nowObj.toLocaleDateString('th-TH') + ' ' + nowObj.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+                                timestamp = nowObj.getTime();
+                            }
+
+                            parsedTransactions.push({
+                                description: description,
+                                amount: amount,
+                                type: type,
+                                dateText: dateText,
+                                timestamp: timestamp
+                            });
+                        }
+
+                        if(parsedTransactions.length === 0) {
+                            alert('ไม่สามารถประมวลผลข้อมูลในไฟล์นี้ได้ กรุณาตรวจสอบคอลัมน์ใหม่อีกครั้ง');
+                            return;
+                        }
+
+                        parsedTransactions.sort((a, b) => a.timestamp - b.timestamp);
+                        transactions = parsedTransactions;
+                        editTargetIndex = -1;
+                        updateLocalStorage();
+                        updateUI();
+                        alert(`🎉 นำเข้าสำเร็จ! โหลดเข้าสู่ระบบปฏิทินย้อนหลังเรียบร้อย ${transactions.length} รายการ`);
+                    }
+                } catch (err) { 
+                    alert('เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: ' + err.message); 
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        event.target.value = '';
+    }
+
+    checkAppMode();
+    showCurrentDate();
+    updateUI();
+</script>
+
+</body>
+</html>
